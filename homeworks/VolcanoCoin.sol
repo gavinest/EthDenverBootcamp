@@ -12,7 +12,7 @@ contract VolcanoCoin is Ownable {
     // structs
     struct Payment {
         uint256 amount;
-        address recipient;
+        address to;
     }
 
     // events
@@ -34,22 +34,39 @@ contract VolcanoCoin is Ownable {
         return userBalances[_user];
     }
 
-    function transfer(uint256 _amount, address payable _recipient)
+    function userPaymentHistory(address _user)
         public
-        payable
+        view
+        returns (Payment[] memory)
     {
+        return paymentHistory[_user];
+    }
+
+    function recordPayment(
+        address _sender,
+        address _to,
+        uint256 _amount
+    ) private {
+        // record a payment in the sender's paymentHistory
+        paymentHistory[_sender].push(Payment({amount: _amount, to: _to}));
+    }
+
+    function transfer(uint256 _amount, address payable _to) public payable {
         // transfer an amount to a specified address
 
         require(_amount > 0, "transfer amount must be greater than 0");
         require(
             msg.value >= _amount,
-            "the msg.value must be greater than requested amount"
+            "the msg.value must be greater than or equal to requested amount"
         );
 
         // send using recommented method https://solidity-by-example.org/sending-ether/
-        (bool sent, ) = _recipient.call{value: _amount}("");
+        (bool sent, ) = _to.call{value: _amount}("");
         require(sent, "Failed to send either");
 
-        emit transferEvent(_amount, _recipient);
+        // record the payment after successful send
+        recordPayment(msg.sender, _to, _amount);
+
+        emit transferEvent(_amount, _to);
     }
 }
